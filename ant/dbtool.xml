@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="create_run_jar" name="Create Runnable Jar for Project OracleAuditor with libraries in sub-folder">
+	<!--this file was created by Eclipse Runnable JAR Export Wizard-->
+	<!--ANT 1.7 is required                                        -->
+	<!--define folder properties-->
+	<property name="dir.buildfile" value="./osnippets" />
+	<property name="dir.workspace" value="D:/workspace" />
+	<property name="dir.jarfile" value="${dir.buildfile}" />
+	<property name="lib" value="lib" />
+
+	<target name="prepare">
+		<delete dir="${dir.buildfile}" />
+
+		<copy todir="${dir.jarfile}/data">
+			<fileset dir="${dir.workspace}/OrderSnippets/data" />
+		</copy>
+
+		<copy file="${dir.workspace}/OrderSnippets/readme.txt" todir="${dir.jarfile}" />
+	</target>
+
+	<target name="osnippets" depends="prepare">
+		<jar destfile="${dir.jarfile}/osnippets.jar">
+			<manifest>
+				<attribute name="Main-Class" value="net.dasong.sqldev.SnippetsDealer" />
+			</manifest>
+			<fileset dir="${dir.workspace}/OrderSnippets/bin" />
+		</jar>
+	</target>
+
+	<target name="create_run_jar" depends="osnippets" />
+</project>

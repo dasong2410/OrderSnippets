@@ -1,0 +1,2181 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<snippets>
+   <group category="1.开发" language="PLSQL">
+      <snippet name="0空白行" description="插入空白行">
+         <code>
+            <![CDATA[
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="dbn_utl：date2sec" description="日期转绝对秒">
+         <code>
+            <![CDATA[--日期转绝对秒（默认格式为YYYYMMDD，如果需要传入其它格式，第二个参数传入日期格式）
+select dbn_utl.date2sec('20150101') from dual;
+select dbn_utl.date2sec('2015-01-01 12:12:12', 'YYYY-MM-DD HH24:MI:SS') from dual;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="dbn_utl：ip2num/ip2num_host" description="ip转数字">
+         <code>
+            <![CDATA[--ip转数字
+--ip第一段大于127，转出的数字是负数，适用于noah2.0
+select dbn_utl.ip2num('192.168.12.103') from dual;
+--不会出现负数，适用于新网综3.0
+select dbn_utl.ip2num_host('192.168.12.103') from dual;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="dbn_utl：num2ip/num2ip_host" description="数字转ip">
+         <code>
+            <![CDATA[--数字转ip
+--字段中数字出现负数，使用此函数，适用于noah2.0
+select dbn_utl.num2ip(-1062728601) from dual;
+--字段中没有负数，使用此函数，适用于新网综3.0
+select dbn_utl.num2ip_host(3232238695) from dual;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="dbn_utl：sec2date" description="绝对秒转日期">
+         <code>
+            <![CDATA[--绝对秒转日期（默认格式为YYYYMMDD，如果需要传入其它格式，第二个参数传入日期格式）
+select dbn_utl.sec2date(1420085532) from dual;
+select dbn_utl.sec2date(1420085532, 'YYYY-MM-DD HH24:MI:SS') from dual;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="dbn_utl：split" description="拆分字符串">
+         <code>
+            <![CDATA[--字符串拆分（默认分隔符是英文逗号，如果需要其它字符分隔，第二个参数传入分隔符）
+select * from table(dbn_utl.split('a,b,c,d,e'));
+select * from table(dbn_utl.split('a;b;c;d;e',';'));
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="job：1.创建job" description="创建job">
+         <code>
+            <![CDATA[begin
+  dbms_scheduler.create_job
+  (
+    job_name        => 'JOB_MERGE_APPALARM',
+    job_type        => 'PLSQL_BLOCK',
+    job_action      => 'begin proc_merge_appalarm; end;',
+    repeat_interval => 'FREQ=DAILY; BYHOUR=4; BYMINUTE=10',
+    enabled         => true
+  );
+end;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="job：2.删除job" description="删除job">
+         <code>
+            <![CDATA[begin
+  dbms_scheduler.drop_job(job_name => 'JOB_MERGE_APPALARM');
+end;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="job：3.执行job" description="执行job">
+         <code>
+            <![CDATA[begin   dbms_scheduler.run_job(job_name => 'JOB_MERGE_ORDER'); end; / ]]>
+         </code>
+      </snippet>
+      <snippet name="job：查询job" description="查询当前用户下所有job">
+         <code>
+            <![CDATA[select * from user_scheduler_jobs
+ order by job_name;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="job：正在执行的job" description="查询当前用户下正在执行的job">
+         <code>
+            <![CDATA[select * from user_scheduler_running_jobs
+ order by job_name;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="job：获取job ddl" description="获取job ddl">
+         <code>
+            <![CDATA[--输出job创建语句
+set serveroutput on;
+declare
+  l_sql varchar2(4000);
+begin
+  dbms_output.put_line('set serveroutput on;' || chr(10));
+  
+  for l_job in(select job_name, 
+                      job_type, 
+                      job_action, 
+                      to_char(start_date, 'YYYY-MM-DD HH24:MI:SS') start_date, 
+                      repeat_interval, 
+                      enabled 
+                 from user_scheduler_jobs) loop
+  l_sql := 'begin'                                                                                                                || chr(10)
+        || '  dbms_scheduler.create_job'                                                                                          || chr(10)
+        || '  ('                                                                                                                  || chr(10)
+        || '    job_name        => '''          || l_job.job_name                           || ''','                              || chr(10)
+        || '    job_type        => '''          || l_job.job_type                           || ''','                              || chr(10)
+        || '    job_action      => '''          || replace(l_job.job_action, '''', '''''')  || ''','                              || chr(10)
+        || '    start_date      => to_date('''  || l_job.start_date                         || ''', ''YYYY-MM-DD HH24:MI:SS''),'  || chr(10)
+        || '    repeat_interval => '''          || l_job.repeat_interval                    || ''','                              || chr(10)
+        || '    enabled         => '            || lower(l_job.enabled)                                                           || chr(10)
+        || '  );'                                                                                                                 || chr(10)
+        || 'exception'                                                                                                            || chr(10)
+        || '  when others then'                                                                                                   || chr(10)
+        || '    dbms_output.put_line(substr(sqlerrm, 1, 2000));'                                                                  || chr(10)
+        || 'end;'                                                                                                                 || chr(10)
+        || '/';
+    
+    dbms_output.put_line('--exec dbms_scheduler.drop_job(''' || l_job.job_name || ''')' || chr(10));
+    dbms_output.put_line(l_sql || chr(10));
+  end loop;
+end;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="job：运行日志" description="查询当前用户下job运行日志">
+         <code>
+            <![CDATA[select * from user_scheduler_job_run_details 
+ where job_name=upper('job_name')
+ order by log_id;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="字符：编码函数" description="">
+         <code>
+            <![CDATA[select ascii('a') from dual;
+select chr(97) from dual;
+select asciistr('中') from dual;
+select unistr('\4E2D') from dual;
+]]>
+         </code>
+      </snippet>
+      <snippet name="数据文件：数据文件信息" description="查询数据文件信息">
+         <code>
+            <![CDATA[select file#, name, trunc(bytes/1024/1024/1024, 2) "Size(G)" from v$datafile;
+
+select file_id, file_name, trunc(bytes/1024/1024/1024, 2) "Size(G)", tablespace_name 
+  from dba_data_files
+ order by file_id;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="用户：4.修改用户信息" description="修改用户密码、默认表空间等">
+         <code>
+            <![CDATA[alter user dasong identified by dasong;
+alter user dasong default tablespace dasong;
+]]>
+         </code>
+      </snippet>
+      <snippet name="用户：3.修改用户名" description="修改用户名">
+         <code>
+            <![CDATA[--最好不要操作
+update user$ set name='KEYWORD' where name='FHNSDB';
+commit;
+
+alter system flush shared_pool;
+alter system flush buffer_cache;
+alter user keyword identified by keyword;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="用户：1.创建用户" description="创建用户">
+         <code>
+            <![CDATA[create bigfile tablespace dasong
+datafile '/oracle/oracle/oradata/orcl/dasong.dbf' size 100M
+autoextend on next 10M;
+
+create user dasong identified by dasong
+default tablespace dasong
+temporary tablespace temp;
+
+grant create session to dasong;
+grant resource to dasong;
+grant debug connect session to dasong;
+grant debug any procedure to dasong;
+grant select_catalog_role to dasong;
+]]>
+         </code>
+      </snippet>
+      <snippet name="用户：2.删除用户" description="删除用户">
+         <code>
+            <![CDATA[accept usr_name varchar2(512) prompt '请输入要删除的用户名：'
+
+set verify off
+set feedback off
+set serveroutput on
+
+begin
+  for l_sess in (select sid, serial# from v$session where username=upper('&&usr_name')) loop
+    execute immediate 'alter system kill session ''' || l_sess.sid || ', ' || l_sess.serial# || '''';
+  end loop;
+  
+  execute immediate 'drop user &&usr_name cascade';
+exception
+  when others then
+    dbms_output.put_line(sqlerrm);
+end;
+/
+
+set verify on
+set feedback on
+set serveroutput off
+]]>
+         </code>
+      </snippet>
+      <snippet name="用户：清除所有对象" description="清除用户下所有对象">
+         <code>
+            <![CDATA[--删除用户下的对象
+set serveroutput on;
+begin
+  --删除表
+  dbms_output.put_line('Drop table:');
+  
+  for l_tab in (select table_name from user_tables) loop
+    begin
+      execute immediate 'drop table ' || l_tab.table_name || ' purge';
+      
+      dbms_output.put_line('  Succ: ' || l_tab.table_name);
+    exception
+      when others then
+        dbms_output.put_line('  Fail: ' || l_tab.table_name);
+    end;
+  end loop;
+  
+  --删除视图
+  dbms_output.put_line(chr(10) || 'Drop view:');
+  
+  for l_view in (select view_name from user_views) loop
+    begin
+      execute immediate 'drop view ' || l_view.view_name;
+      
+      dbms_output.put_line('  Succ: ' || l_view.view_name);
+    exception
+      when others then
+        dbms_output.put_line('  Fail: ' || l_view.view_name);
+    end;
+  end loop;
+  
+  --删除序列
+  dbms_output.put_line(chr(10) || 'Drop sequence:');
+  
+  for l_seq in (select sequence_name from user_sequences) loop
+    begin
+      execute immediate 'drop sequence ' || l_seq.sequence_name;
+      
+      dbms_output.put_line('  Succ: ' || l_seq.sequence_name);
+    exception
+      when others then
+        dbms_output.put_line('  Fail: ' || l_seq.sequence_name);
+    end;
+  end loop;
+  
+  --删除作业
+  dbms_output.put_line(chr(10) || 'Drop job:');
+  
+  for l_job in (select job_name from user_scheduler_jobs) loop
+    begin
+      dbms_scheduler.drop_job(job_name=>l_job.job_name, force=>true);
+      
+      dbms_output.put_line('  Succ: ' || l_job.job_name);
+    exception
+      when others then
+        dbms_output.put_line('  Fail: ' || l_job.job_name);
+    end;
+  end loop;
+end;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="索引：4.rebuild失效索引" description="rebuild失效索引">
+         <code>
+            <![CDATA[begin
+  begin
+    for l_idx in (select index_name from user_indexes where status='UNUSABLE') loop
+      execute immediate 'alter index ' || l_idx.index_name || ' rebuild';
+    end loop;
+  end;
+  
+  begin
+    for l_idx in (select index_name, partition_name from user_ind_partitions where status='UNUSABLE') loop
+      execute immediate 'alter index ' || l_idx.index_name || ' rebuild partition ' || l_idx.partition_name;
+    end loop;
+  end;
+  
+  begin
+    for l_idx in (select index_name, subpartition_name from user_ind_subpartitions where status='UNUSABLE') loop
+      execute immediate 'alter index ' || l_idx.index_name || ' rebuild subpartition ' || l_idx.subpartition_name;
+    end loop;
+  end;
+end;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="索引：2.删除索引" description="删除索引">
+         <code>
+            <![CDATA[drop index index_name;
+]]>
+         </code>
+      </snippet>
+      <snippet name="索引：3.查看失效索引" description="查看失效索引">
+         <code>
+            <![CDATA[select index_name, partition_name, subpartition_name
+  from (select index_name, 'N/A' partition_name, 'N/A' subpartition_name
+          from user_indexes
+         where status='UNUSABLE'
+         union all
+        select index_name, partition_name, 'N/A' subpartition_name
+          from user_ind_partitions
+         where status='UNUSABLE'
+         union all
+        select index_name, partition_name, subpartition_name
+          from user_ind_subpartitions
+         where status='UNUSABLE')
+ order by index_name, partition_name, subpartition_name;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="索引：获取指定索引的ddl" description="获取指定索引的ddl">
+         <code>
+            <![CDATA[set serveroutput on;
+begin
+  dbms_output.put_line(dbms_metadata.get_ddl ('INDEX', upper('index_name'), user) || ';');
+end;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="索引：获取指定表的索引ddl" description="获取指定表的索引ddl">
+         <code>
+            <![CDATA[set serveroutput on;
+declare
+  l_idx_sql varchar2(4000);
+begin
+  for l_idx in (select index_name 
+                  from user_indexes 
+                 where table_name=upper('table_name')) loop
+    l_idx_sql := dbms_metadata.get_ddl ('INDEX', l_idx.index_name, user);
+    
+    dbms_output.put_line(l_idx_sql || ';');
+  end loop;
+end;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="表空间：1.创建表空间" description="创建表空间">
+         <code>
+            <![CDATA[create bigfile tablespace dasong
+datafile '/oracle/ora11g/oradata/dasong.dbf' size 1g 
+autoextend on next 1g;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="表空间：3.删除表空间" description="删除表空间">
+         <code>
+            <![CDATA[drop tablespace dasong including contents and datafiles;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="表空间：大小及空闲大小" description="查询表空间大小及空闲大小">
+         <code>
+            <![CDATA[select a.tablespace_name, 
+       trunc(a.bytes/1024/1024/1024, 2) "TOTAL(G)", 
+       trunc(b.bytes/1024/1024/1024, 2) "FREE(G)",
+       trunc(b.bytes/a.bytes, 4)*100 "FREE(%)"
+  from (select tablespace_name, sum(bytes) bytes from dba_data_files
+         group by tablespace_name) a,
+       (select tablespace_name, sum(bytes) bytes from dba_free_space
+         group by tablespace_name) b
+ where a.tablespace_name = b.tablespace_name
+ order by a.bytes desc;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="表空间：获取表空间ddl语句" description="获取表空间ddl语句">
+         <code>
+            <![CDATA[--print every tablespace's ddl sentance
+set serveroutput on;
+
+begin
+  for l_tbs in (select name from v$tablespace) loop
+    dbms_output.put_line(dbms_metadata.get_ddl(object_type => 'TABLESPACE', name => l_tbs.name) || ';');
+  end loop;
+end;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="表：3.修改表名" description="修改表名">
+         <code>
+            <![CDATA[alter table t_test rename to t_test1;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="表：1.创建表" description="创建表">
+         <code>
+            <![CDATA[create table t_test
+(
+  c1 number，
+  c2 varchar2(32)
+);
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="表：6.删除字段" description="删除字段">
+         <code>
+            <![CDATA[alter table t_test drop(c3);
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="表：2.删除表" description="删除表">
+         <code>
+            <![CDATA[drop table t_test purge;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="表：占用空间大小（所有表）" description="查询当前用户下所有表占用空间大小">
+         <code>
+            <![CDATA[select segment_name, trunc(sum(bytes)/1024/1024/1024, 2) "SIZE(G)"
+  from user_segments
+ where segment_type like '%TABLE%'
+ group by segment_name
+ order by sum(bytes) desc;
+]]>
+         </code>
+      </snippet>
+      <snippet name="表：4.新增字段" description="新增字段">
+         <code>
+            <![CDATA[alter table t_test add(c3 number);
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="job：一次性作业" description="作业只执行一次，结束后自动删除">
+         <code>
+            <![CDATA[create or replace procedure proc_oneoff
+as
+begin
+  null;
+exception
+  when others then
+    null;
+end proc_oneoff;
+/
+
+begin
+  dbms_scheduler.create_job
+  (
+    job_name        => 'JOB_ONEOFF',
+    job_type        => 'PLSQL_BLOCK',
+    job_action      => 'begin proc_oneoff; end;',
+    enabled         => true
+  );
+end;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="job：4.停止job" description="停止job">
+         <code>
+            <![CDATA[begin
+  dbms_scheduler.stop_job(job_name => 'JOB_MERGE_ORDER');
+end;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="表：占用空间大小（指定表）" description="查询当前用户下指定表占用空间大小">
+         <code>
+            <![CDATA[select segment_name, partition_name, trunc(sum(bytes)/1024/1024/1024, 2) "SIZE(G)"
+  from user_segments
+ where upper(segment_name)=('table_name')
+ group by rollup(segment_name, partition_name);
+]]>
+         </code>
+      </snippet>
+      <snippet name="索引：1.创建索引" description="创建索引">
+         <code>
+            <![CDATA[create index index_name on table_name(column_name) tablespace tablespace_name;
+]]>
+         </code>
+      </snippet>
+      <snippet name="表：5.修改字段" description="修改字段">
+         <code>
+            <![CDATA[alter table table_name rename column column_name1 to column_name2;
+]]>
+         </code>
+      </snippet>
+      <snippet name="表空间：2.修改表空间" description="修改表空间">
+         <code>
+            <![CDATA[alter tablespace tablespace_name1 rename to tablespace_name2;
+]]>
+         </code>
+      </snippet>
+      <snippet name="字符：zh_concat" description="zh_concat">
+         <code>
+            <![CDATA[create or replace type zh_concat_im
+authid current_user as object
+(
+  curr_str varchar2(32767),
+  static function odciaggregateinitialize
+  (
+    sctx in out zh_concat_im
+  ) return number,
+  
+  member function odciaggregateiterate
+  (
+    self in out zh_concat_im,
+    p1 in varchar2
+  ) return number,
+  
+  member function odciaggregateterminate
+  (
+    self in zh_concat_im,
+    returnvalue out varchar2,
+    flags in number
+  ) return number,
+  
+  member function odciaggregatemerge
+  (
+    self in out zh_concat_im,
+    sctx2 in zh_concat_im
+  ) return number
+);
+/
+
+create or replace type body zh_concat_im
+is
+  static function odciaggregateinitialize
+  (
+    sctx in out zh_concat_im
+  ) return number
+  is
+  begin
+    sctx := zh_concat_im(null) ;
+    return odciconst.success;
+  end;
+  
+  member function odciaggregateiterate
+  (
+    self in out zh_concat_im,
+    p1 in varchar2
+  ) return number
+  is
+  begin
+    if(curr_str is not null) then
+      curr_str := curr_str || ',' || p1;
+    else
+      curr_str := p1;
+    end if;
+    
+    return odciconst.success;
+  end;
+  
+  member function odciaggregateterminate
+  (
+    self in zh_concat_im,
+    returnvalue out varchar2,
+    flags in number
+  ) return number
+  is
+  begin
+    returnvalue := curr_str ;
+    return odciconst.success;
+  end;
+  
+  member function odciaggregatemerge
+  (
+    self in out zh_concat_im,
+    sctx2 in zh_concat_im
+  ) return number
+  is
+  begin
+    if(sctx2.curr_str is not null) then
+      self.curr_str := self.curr_str || ',' || sctx2.curr_str ;
+    end if;
+    
+    return odciconst.success;
+  end;
+end;
+/
+
+create or replace function zh_concat(p1 varchar2)
+return varchar2 aggregate using zh_concat_im ;
+/
+]]>
+         </code>
+      </snippet>
+   </group>
+   <group category="2.管理" language="PLSQL">
+      <snippet name="SGA: flush sga components" description="flush sga components">
+         <code>
+            <![CDATA[--flush sga components
+alter system flush buffer_cache;
+alter system flush shared_pool;
+alter system flush global context;
+]]>
+         </code>
+      </snippet>
+      <snippet name="sid_spid转换" description="根据sid/spid查找spid/sid">
+         <code>
+            <![CDATA[--根据spid定位sid、用户、sql等
+--session信息
+select s.sid, s.serial#, s.paddr, s.username, s.machine, s.program, s.event, s.p1text, s.p2, s.p3
+  from v$session s, v$process p
+ where s.paddr=p.addr
+   and p.spid=0000;
+
+--sql
+select sql_fulltext from v$sql
+ where sql_id in (select s.sql_id from v$session s, v$process p
+                   where s.paddr=p.addr
+                     and p.spid=0000);
+
+--session信息、sql
+select s.sid, s.serial#, s.paddr, s.username, s.machine, s.program, s.event, s.p1text, s.p2, s.p3, s.sql_id,
+       sq.sql_fulltext
+  from v$session s, v$process p, v$sql sq
+ where s.paddr=p.addr
+   and s.sql_id=sq.sql_id(+)
+   and p.spid=0000;
+
+--根据sid定位spid
+select p.pid, p.spid, p.program, p.tracefile
+  from v$session s, v$process p
+ where s.paddr=p.addr
+   and s.sid=0000;
+
+]]>
+         </code>
+      </snippet>
+      <snippet name="trace file name" description="获取session对应的跟踪文件">
+         <code>
+            <![CDATA[--1.第二种方法可能比较复杂，暂时不确定两种取出的结果有什么区别
+--当前session对应的跟踪日志文件
+select p.pid, p.spid, p.program, p.tracefile
+  from v$session s, v$process p
+ where s.paddr=p.addr
+   and s.sid=(select sid from v$mystat where rownum=1);
+
+--指定session对应的跟踪日志文件
+accept sid varchar2(512) prompt '请输入Session ID：'
+select p.pid, p.spid, p.program, p.tracefile
+  from v$session s, v$process p
+ where s.paddr=p.addr
+   and s.sid=&sid;
+
+--2.抄自网络
+--当前session对应的跟踪日志文件
+select d.value || '/' || i.instance_name || '_ora_' || p.spid || '.trc' trace_file_name 
+  from (select p.spid     
+        from v$mystat m,
+             v$session s,
+             v$process p
+       where m.statistic#=1
+         and s.sid=m.sid
+         and p.addr=s.paddr) p,
+       (select instance_name from v$instance) i, 
+       (select value from v$parameter where name = 'user_dump_dest') d;
+
+--指定session对应的跟踪日志文件
+accept sid varchar2(512) prompt '请输入Session ID：'
+select d.value || '/' || i.instance_name || '_ora_' || p.spid || '.trc' trace_file_name 
+  from (select p.spid     
+        from v$session s,
+             v$process p
+       where p.addr=s.paddr
+         and s.sid=&sid) p,
+       (select instance_name from v$instance) i, 
+       (select value from v$parameter where name = 'user_dump_dest') d;
+]]>
+         </code>
+      </snippet>
+      <snippet name="数据库参数" description="数据库参数（包括未归档参数）">
+         <code>
+            <![CDATA[--所有参数，包括未归档参数
+select a.ksppinm, 
+       b.ksppstvl, 
+       a.ksppdesc, 
+       b.ksppstdvl, 
+       b.ksppstdf, 
+       b.ksppstvf 
+  from x$ksppi a,
+       x$ksppcv b
+ where a.indx = b.indx
+   and a.inst_id = b.inst_id
+ order by lower(a.ksppinm);
+
+--归档参数 
+select name, 
+       value, 
+       display_value 
+  from v$parameter 
+ order by name;
+ 
+--数据库属性
+select property_name, 
+       property_value
+  from database_properties;
+]]>
+         </code>
+      </snippet>
+      <snippet name="绑定变量" description="获取sql语句中使用的绑定变量的值">
+         <code>
+            <![CDATA[select b.sql_text, a.name, a.value_string 
+  from v$sql_bind_capture a,
+       v$sql b
+ where a.sql_id = b.sql_id
+   and lower(b.sql_text) like lower('%&sql_keyword%');
+]]>
+         </code>
+      </snippet>
+      <snippet name="stat" description="v$mystat、v$sesstat、v$statname">
+         <code>
+            <![CDATA[select a.statistic#, b.name, a.value 
+  from v$mystat a, v$statname b
+ where a.statistic#=b.statistic#
+ order by a.statistic#;
+
+select a.sid, a.statistic#, b.name, a.value 
+  from v$sesstat a, v$statname b
+ where a.statistic#=b.statistic#
+ order by a.sid, a.statistic#;
+]]>
+         </code>
+      </snippet>
+      <snippet name="dbms_repair" description="dbms_repair">
+         <code>
+            <![CDATA[--创建表
+begin
+  dbms_repair.admin_tables
+  (
+    table_name  =>  'REPAIR_TABLE', 
+    table_type  =>  dbms_repair.repair_table, 
+    action      =>  dbms_repair.create_action, 
+    tablespace  =>  'OUTSIDE'
+  );
+end;
+/
+
+--检查坏块
+set serveroutput on
+declare
+  l_num_corrupt int;
+begin
+  l_num_corrupt := 0;
+  dbms_repair.check_object
+  (
+    schema_name       =>  'OUTSIDE',
+    object_name       =>  'TB_NET_GROUP',
+    repair_table_name =>  'REPAIR_TABLE',
+    corrupt_count     =>  l_num_corrupt
+  );
+  
+  dbms_output.put_line('number corrupt: ' || to_char (l_num_corrupt));
+end;
+/
+
+--修复坏块
+set serveroutput on
+declare
+  l_num_fix int;
+begin 
+  l_num_fix := 0;
+  dbms_repair.fix_corrupt_blocks
+  (
+    schema_name       => 'OUTSIDE',
+    object_name       => 'TB_NET_GROUP',
+    object_type       => dbms_repair.table_object,
+    repair_table_name => 'REPAIR_TABLE',
+    fix_count         => l_num_fix
+  );
+  
+  dbms_output.put_line('num fix: ' || to_char(l_num_fix));
+end;
+/
+
+--跳过坏块
+begin
+  dbms_repair.skip_corrupt_blocks
+  (
+     schema_name  => 'OUTSIDE',
+     object_name  => 'TB_NET_GROUP',
+     object_type  => dbms_repair.table_object,
+     flags        => dbms_repair.skip_flag
+  );
+end;
+/
+
+
+select object_name, block_id, corrupt_type, marked_corrupt, corrupt_description, repair_description
+  from repair_table;
+
+select * from v$database_block_corruption
+]]>
+         </code>
+      </snippet>
+      <snippet name="drop user from user$" description="drop user from user$">
+         <code>
+            <![CDATA[--删除用户（直接删除user$中的数据，用户中的数据等不会被删除，这种情况可能会由断电造成的数据字典中元数据的丢失，但是实际的数据还存在）
+--select * from user$ where name='FOX';
+delete from user$ where name='FOX';
+commit;
+
+--找出上一步删除的用户的user#
+select * from seg$ where user# not in(select user# from user$);
+
+--插入一条数据，新增用户
+--（以下insert可以把user$中选一条普通用户的数据卖出，然后修改一下user#、name；
+--用户名根据实际情况修改；
+--password字段如果给null，则可以用之前的密码登录，所以此字段应该是可填可不填）
+insert into user$ (user#,name,type#,password,datats#,tempts#,ctime,ptime,exptime,ltime,resource$,audit$,defrole,defgrp#,defgrp_seq#,astatus,lcount,defschclass,ext_username,spare1,spare2,spare3,spare4,spare5,spare6) values (233,'FOX',1,'352636B8F2EB9D65',16,3,to_date('2015-01-27 10:58:30','YYYY-MM-DD HH24:MI:SS'),to_date('2015-01-27 10:58:30','YYYY-MM-DD HH24:MI:SS'),null,null,0,null,1,null,null,0,0,'DEFAULT_CONSUMER_GROUP',null,0,null,null,'S:9A4467E8962B4C438A82769C76A42DD0B1B0D8226C25FF7B4886E19DF486',null,null);
+commit;
+
+--修改密码
+alter system flush shared_pool;
+alter system flush buffer_cache;
+alter user fox identified by fox;
+
+--使用新增加的用户登录数据，验证一下数据有没有丢失
+--检查一下dba_users中默认表空间等是否正确，如果不正确根据实际情况修改
+--alter user fox default tablespace fox;
+]]>
+         </code>
+      </snippet>
+      <snippet name="datapump传输表空间" description="datapump传输表空间">
+         <code>
+            <![CDATA[--expdp/impdp 传输表空间 迁移数据
+
+--导出
+--1.表空间read only
+alter tablespace fox read only;
+alter tablespace fox_index read only;
+
+--2.导出 传输表空间
+--导出schema元数据
+expdp system directory=dir_datapump dumpfile=tts.dmp transport_tablespaces=fox,fox_index
+expdp system directory=dir_datapump dumpfile=md.dmp schemas=fox content=metadata_only
+
+--3.copy数据文件
+--4.表空间read write
+alter tablespace fox read write;
+alter tablespace fox_index read write;
+
+--导入
+--1.目标数据库创建用户，默认表空间暂时使用users
+
+--2.导入传输表空间
+--导入schema元数据
+impdp system directory=dir_datapump dumpfile=tts.dmp transport_datafiles='/oradataa/bk/fox.dbf','/oradataa/bk/fox_index.dbf'
+impdp system directory=dir_datapump dumpfile=md.dmp schemas=fox content=metadata_only table_exists_action=skip
+
+--3.修改用户默认表空间
+alter user fox default tablespace fox;
+
+--4.表空间read write
+alter tablespace fox read write;
+alter tablespace fox_index read write;
+]]>
+         </code>
+      </snippet>
+      <snippet name="外部表加载数据（external table）" description="外部表加载数据（external table）">
+         <code>
+            <![CDATA[--创建directory，用来存储要加载的数据
+create or replace directory dir_datapump as '/home/oracle/datapump';
+
+--创建外部表
+--drop table ext_wxrecord;
+create table ext_wxrecord
+(
+  version     varchar2(20),
+  type        varchar2(20),
+  dtp         varchar2(255),
+  charset1    varchar2(20),
+  msgid       varchar2(255),
+  groupid     varchar2(255),
+  userid      varchar2(255),
+  accountname varchar2(255),
+  capturetime varchar2(255),
+  msgtype     varchar2(255),
+  content     clob,
+  playlength  varchar2(255),
+  length      varchar2(255),
+  clientip    varchar2(255),
+  mainfile    varchar2(255),
+  filename    varchar2(255),
+  codeid      varchar2(255)
+)
+organization external
+(
+  type oracle_loader
+  default directory dir_datapump
+  access parameters
+  (
+    records delimited by newline
+    fields terminated by '\t' 
+    (
+      version     char(20),
+      type        char(20),
+      dtp         char(255), 
+      charset1    char(20),
+      msgid       char(255),
+      groupid     char(255),
+      userid      char(255),
+      accountname char(255),
+      capturetime char(255),
+      msgtype     char(255),
+      content     char(32767),
+      playlength  char(255),
+      length      char(255),
+      clientip    char(255),
+      mainfile    char(255),
+      filename    char(255),
+      codeid      char(255)
+    )
+  )
+  location ('out_put_1000.txt', 'out_put_1001.txt')
+);
+
+--从外部表加载数据到普通表，现在的情况是有5台机器按groupid加载数据；
+--ora_hash(groupid, 4)的值为0-4，每台机器选取一个值；
+--创建的普通表按groupid建128个分区
+--
+--drop table wxrecord;
+create table wxrecord nologging
+partition by hash(groupid)
+partitions 128
+as
+select /*+ append */ * from ext_wxrecord a where ora_hash(groupid, 4)=0;
+
+--因为要过滤groupid，groupid又是散乱在每个文件中，所以每台机器上都要导所有的 文本数据 的文件；
+--加载到普通的表的时候再过滤，数据不会复入
+]]>
+         </code>
+      </snippet>
+      <snippet name="lock" description="lock">
+         <code>
+            <![CDATA[--查询TM、TX锁相关的信息：用户名、表名、机器名、连接工具、sql等
+select s.sid, s.serial#, l.type, l.id1, l.id2, l.lmode, l.request, l.block, 
+       o.owner, o.object_name, o.object_id, s.username, s.machine, s.program, s.sql_id
+  from v$lock l, 
+       v$session s, 
+       dba_objects o
+ where l.type in('TM', 'TX')
+   and l.sid=s.sid
+   and l.id1=o.object_id(+)
+ order by s.sid, s.serial#, l.type;
+
+--查询阻塞、被阻塞对象
+select a.sid blocker_sid, a.type blocker_type, a.id1 blocker_id1, a.id2 blocker_id2, a.lmode blocker_lmode, a.request blocker_request,
+       ' ---- ' "      ",
+       b.sid blocked_sid, b.type blocked_type, b.id1 blocked_id1, b.id2 blocked_id2, b.lmode blocked_lmode, b.request blocked_request
+  from v$lock a, v$lock b
+ where a.block=1
+   and a.id1=b.id1
+   and a.id2=b.id2
+   and a.sid!=b.sid;
+
+select * from v$locked_object;
+]]>
+         </code>
+      </snippet>
+   </group>
+   <group category="3.工具" language="PLSQL">
+      <snippet name="数据库用户登录、退出信息记录" description="数据库用户登录、退出信息记录">
+         <code>
+            <![CDATA[--drop table t_logon_off;
+create table t_logon_off
+(
+  session_user varchar2(1024),
+  host         varchar2(1024),
+  ip_address   varchar2(1024),
+  os_user      varchar2(1024),
+  module       varchar2(1024),
+  server_host  varchar2(1024),
+  service_name varchar2(1024),
+  sid          number,
+  logon_time   date,
+  logoff_time  date
+);
+
+create or replace trigger trg_logon
+after logon on database
+declare
+begin
+  insert into t_logon_off(session_user, host, ip_address, os_user, module, server_host, service_name, sid, logon_time)
+  values (sys_context('USERENV', 'SESSION_USER'), sys_context('USERENV', 'HOST'), sys_context('USERENV', 'IP_ADDRESS'), sys_context('USERENV', 'OS_USER'), sys_context('USERENV', 'MODULE'), sys_context('USERENV', 'SERVER_HOST'), sys_context('USERENV', 'SERVICE_NAME'), sys_context('USERENV', 'SID'), sysdate);
+  
+  commit;
+end trg_logon;
+/
+
+create or replace trigger trg_logoff
+before logoff on database
+declare
+begin
+  update t_logon_off
+     set logoff_time=sysdate
+   where host=sys_context('USERENV', 'HOST')
+     and sid=sys_context('USERENV', 'SID');
+  
+  commit;
+end trg_logoff;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="日志" description="用于存储过程等记录执行日志">
+         <code>
+            <![CDATA[--drop table t_db_log;
+create table t_db_log
+(
+  sid           number,
+  serial#       number,
+  proc_name     varchar2(30),
+  log_date      date,
+  log_msg       varchar2(1024),
+  err_line_info varchar2(1024)
+);
+
+--用户需要有v$session的查询权限
+--grant select on v_$session to username;
+create or replace procedure p_db_logger
+/* Author:    Marcus Mao
+ * Date:      2012-06-25
+ * Desc:      用于存储过程等记录执行日志
+ * Modified:  
+ *            2015-03-25 t_db_log增加sid、serial#字段
+ */
+(
+  p_proc_name     varchar2,             --过程名称
+  p_log_msg       varchar2,             --日志内容
+  p_err_line_info varchar2  default ''  --报错行号信息
+)
+as
+  pragma  autonomous_transaction;
+  l_sid     number;
+  l_serial# number;
+begin
+  select sid, serial# into l_sid, l_serial#
+    from v$session
+   where sid=sys_context('USERENV', 'SID');
+  
+  insert into t_db_log (sid, serial#, proc_name, log_date, log_msg, err_line_info)
+  values (l_sid, l_serial#, p_proc_name, sysdate, p_log_msg, p_err_line_info);
+  
+  commit;
+exception
+  when others then
+    rollback;
+    dbms_output.put_line(substr(sqlerrm, 1, 200));
+end p_db_logger;
+/
+
+--使用样例
+create or replace procedure p_test
+as
+  l_myname    varchar2(30)  := dbn_utl.whoami;
+begin
+  --记录开始
+  proc_noah_logger(l_myname, '开始');
+  
+  null;
+  
+  --记录结束
+  proc_noah_logger(l_myname, '结束');
+exception
+  when others then
+    --记录异常
+    proc_noah_logger(l_myname, substr(sqlerrm, 1, 1024), dbms_utility.format_error_backtrace());
+end p_test;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="show_space" description="show_space">
+         <code>
+            <![CDATA[create or replace procedure show_space
+(
+  p_segname   in varchar2,
+  p_owner     in varchar2 default user,
+  p_type      in varchar2 default 'TABLE',
+  p_partition in varchar2 default null
+)
+  -- this procedure uses authid current user so it can query DBA_*
+  -- views using privileges from a ROLE, and so it can be installed
+  -- once per database, instead of once per user who wanted to use it
+  authid current_user
+as
+  l_free_blks          number;
+  l_total_blocks       number;
+  l_total_bytes        number;
+  l_unused_blocks      number;
+  l_unused_bytes       number;
+  l_lastusedextfileid  number;
+  l_lastusedextblockid number;
+  l_last_used_block    number;
+  l_segment_space_mgmt varchar2(255);
+  l_unformatted_blocks number;
+  l_unformatted_bytes  number;
+  l_fs1_blocks         number;
+  l_fs1_bytes          number;
+  l_fs2_blocks         number;
+  l_fs2_bytes          number;
+  l_fs3_blocks         number;
+  l_fs3_bytes          number;
+  l_fs4_blocks         number;
+  l_fs4_bytes          number;
+  l_full_blocks        number;
+  l_full_bytes         number;
+  
+  -- inline procedure to print out numbers nicely formatted
+  -- with a simple label
+  procedure p
+  (
+    p_label in varchar2,
+    p_num   in number
+  )
+  is
+  begin
+    dbms_output.put_line(rpad(p_label, 40, '.') || to_char(p_num, '999,999,999,999') );
+  end;
+begin
+  -- this query is executed dynamically in order to allow this procedure
+  -- to be created by a user who has access to DBA_SEGMENTS/TABLESPACES
+  -- via a role as is customary.
+  -- NOTE: at runtime, the invoker MUST have access to these two
+  -- views!
+  -- this query determines if the object is an ASSM object or not
+  begin
+    execute immediate
+    'select ts.segment_space_management
+       from dba_segments seg, dba_tablespaces ts
+      where seg.segment_name = :p_segname
+        and (:p_partition is null or seg.partition_name = :p_partition)
+        and seg.owner = :p_owner
+        and seg.tablespace_name = ts.tablespace_name'
+       into l_segment_space_mgmt 
+      using p_segname, p_partition, p_partition, p_owner;
+  exception
+    when too_many_rows then
+      dbms_output.put_line('This must be a partitioned table, use p_partition => ');
+      return;
+  end;
+  
+  -- if the object is in an ASSM tablespace, we must use this API
+  -- call to get space information, otherwise we use the FREE_BLOCKS
+  -- API for the user-managed segments
+  if l_segment_space_mgmt = 'AUTO' then
+    dbms_space.space_usage
+    (
+      p_owner, p_segname, p_type, l_unformatted_blocks,
+      l_unformatted_bytes, l_fs1_blocks, l_fs1_bytes, l_fs2_blocks, l_fs2_bytes,
+      l_fs3_blocks, l_fs3_bytes, l_fs4_blocks, l_fs4_bytes, l_full_blocks,
+      l_full_bytes, p_partition
+    );
+    
+    p('Unformatted Blocks', l_unformatted_blocks);
+    p('FS1 Blocks (0-25)', l_fs1_blocks);
+    p('FS2 Blocks (25-50)', l_fs2_blocks);
+    p('FS3 Blocks (50-75)', l_fs3_blocks);
+    p('FS4 Blocks (75-100)', l_fs4_blocks);
+    p('Full Blocks', l_full_blocks);
+  else
+    dbms_space.free_blocks
+    (
+      segment_owner     => p_owner, 
+      segment_name      => p_segname, 
+      segment_type      => p_type, 
+      freelist_group_id => 0, 
+      free_blks         => l_free_blks
+    );
+    
+    p('Free Blocks', l_free_blks);
+  end if;
+  
+  -- and then the unused space API call to get the rest of the
+  -- information
+  dbms_space.unused_space
+  (
+    segment_owner             => p_owner, 
+    segment_name              => p_segname, 
+    segment_type              => p_type, 
+    partition_name            => p_partition, 
+    total_blocks              => l_total_blocks, 
+    total_bytes               => l_total_bytes, 
+    unused_blocks             => l_unused_blocks, 
+    unused_bytes              => l_unused_bytes, 
+    last_used_extent_file_id  => l_lastusedextfileid, 
+    last_used_extent_block_id => l_lastusedextblockid,
+    last_used_block           => l_last_used_block
+  );
+  
+  p('Total Blocks', l_total_blocks);
+  p('Total Bytes', l_total_bytes);
+  p('Total MBytes', trunc(l_total_bytes/1024/1024));
+  p('Unused Blocks', l_unused_blocks);
+  p('Unused Bytes', l_unused_bytes);
+  p('Last Used Ext FileId', l_lastusedextfileid);
+  p('Last Used Ext BlockId', l_lastusedextblockid);
+  p('Last Used Block', l_last_used_block);
+end show_space;
+/
+
+set serveroutput on;
+exec show_space('T_TEST');
+]]>
+         </code>
+      </snippet>
+      <snippet name="dbn_uniform" description="dbn_uniform">
+         <code>
+            <![CDATA[create or replace package dbn_uniform
+/* Author:    Marcus Mao
+ * Date:      2012-01-17
+ * Desc:      归一字段转化函数
+ * Modified:
+ *            
+ */
+as
+  g_const_null constant number := null;
+  
+  /*
+   * 统一将身份证号码去掉出生日期的两位世纪和最后的校验值后，全部转换成15位半角数字表示。
+   */
+  function getidcardnum
+  (
+    p_idcardnum varchar2
+  ) return varchar2;
+  
+  /*
+   * 统一将MAC地址全部采用字母小写并去掉所有分隔字符，仅存储12位小写字母和半角数字的组合。
+   */
+  function getmac
+  (
+    p_mac varchar2
+  ) return varchar2;
+  
+  /*
+   * 统一将手机号码/固话转换。
+   */
+  function getphonenum
+  (
+    p_phonenum varchar2
+  ) return varchar2;
+  
+  /*
+   * 统一将虚拟身份（如：帐号等）全部采用小写半角字母。
+   */
+  function getvirtualid
+  (
+    p_virtualid varchar2
+  ) return varchar2;
+  
+  /*
+   * 统一将URL地址全角转半角，小写字母，URL地址统一删除http://，
+   * 针对URL中www做特殊处理，将“www.”同时删除，即www.baidu.com和baidu.com视为同一个URL；www1.baidu.com和baidu.com视为不同的URL。
+   */
+  function getdomain
+  (
+    p_url varchar2
+  ) return varchar2;
+  
+  /*
+   * 从字符串中匹配邮箱，如果有多个邮箱只能匹配出一个
+   */
+  function getemail
+  (
+    p_email varchar2
+  ) return varchar2;
+  
+  /*
+   * 从字符串中匹配邮箱，如果有多个邮箱只能匹配出一个
+   */
+  function getradius
+  (
+    p_radius varchar2
+  ) return varchar2;
+
+  /*
+   * 删除用户名中的“（读）”
+   */
+  function getusername
+  (
+    p_username varchar2
+  ) return varchar2;
+end dbn_uniform;
+/
+
+create or replace package body dbn_uniform
+as
+  
+  function getidcardnum
+  (
+    p_idcardnum varchar2
+  ) return varchar2
+  as
+    l_idcardnum varchar2(4000);
+  begin
+    l_idcardnum := to_single_byte(p_idcardnum);
+    l_idcardnum := regexp_replace(l_idcardnum, '([0-9]{6})[0-9]{2}([0-9]{9}).*', '\1\2');
+    return l_idcardnum;
+  exception
+    when others then
+      return g_const_null;
+  end getidcardnum;
+  
+  function getmac
+  (
+    p_mac varchar2
+  ) return varchar2
+  as
+    l_mac varchar2(4000);
+  begin
+    l_mac := upper(to_single_byte(p_mac));
+    l_mac := regexp_replace(l_mac, '[^0-9A-Z]*([0-9A-Z]*)[^0-9A-Z]*', '\1');
+    
+    if(length(l_mac)=12) then
+      l_mac := regexp_replace(l_mac, '([0-9A-Z]{2}){1}([0-9A-Z]{2}){1}([0-9A-Z]{2}){1}([0-9A-Z]{2}){1}([0-9A-Z]{2}){1}([0-9A-Z]{2}){1}', '\1-\2-\3-\4-\5-\6');
+    else
+      l_mac := p_mac;
+    end if;
+    
+    return l_mac;
+  exception
+    when others then
+      return g_const_null;
+  end getmac;
+  
+  function getphonenum
+  (
+    p_phonenum varchar2
+  ) return varchar2
+  as
+    l_phonenum varchar2(4000);
+    --手机
+    l_cellp_pattern varchar2(1024)  := '^((86)|(\+86)|(\(86\))|(\(\+86\))|(\(\+\)86))?(1[3458][0-9]{9})$';
+    --固话
+    l_phone_pattern varchar2(1024)  := '^(\(?((0[12][0-9]{1})|(0[3-9][0-9]{2})){1}\)?([-+ ])?)?([0-9]{7,8})$';
+  begin
+    l_phonenum := to_single_byte(p_phonenum);
+    
+    if(regexp_like(l_phonenum, l_cellp_pattern)) then
+      l_phonenum := regexp_replace(l_phonenum, l_cellp_pattern, '\7');
+    elsif(regexp_like(l_phonenum, l_phone_pattern)) then
+      l_phonenum := regexp_replace(l_phonenum, l_phone_pattern, '\3-\6');
+    else
+      l_phonenum := null;
+    end if;
+    
+    return l_phonenum;
+  exception
+    when others then
+      return g_const_null;
+  end getphonenum;
+  
+  function getvirtualid
+  (
+    p_virtualid varchar2
+  ) return varchar2
+  as
+    l_virtualid varchar2(4000);
+  begin
+    l_virtualid := lower(to_single_byte(p_virtualid));
+    return l_virtualid;
+  exception
+    when others then
+      return g_const_null;
+  end getvirtualid;
+  
+  function getdomain
+  (
+    p_url varchar2
+  ) return varchar2
+  as
+    l_url     varchar2(4000);
+    l_pattern varchar2(4000);
+  begin
+    l_pattern := '^(http://)?(www\.)?([^/: ]+)+$';
+    
+    l_url := to_single_byte(p_url);
+    
+    if(regexp_like(l_url, l_pattern)) then
+      l_url := regexp_replace(l_url, '^(http://)?(www\.)?([^/: ]+)+$', '\3');
+    else
+      l_url := p_url;
+    end if;
+    
+    return l_url;
+  exception
+    when others then
+      return g_const_null;
+  end getdomain;
+  
+  function getemail
+  (
+    p_email varchar2
+  ) return varchar2
+  as
+    l_email varchar2(4000);
+  begin
+    l_email := to_single_byte(p_email);
+    l_email := regexp_substr(l_email, '([0-9A-Za-z_]+@[0-9A-Za-z_]+\.[0-9A-Za-z_]+)');
+    
+    return l_email;
+  exception
+    when others then
+      return g_const_null;
+  end getemail;
+  
+  function getradius
+  (
+    p_radius varchar2
+  ) return varchar2
+  as
+    l_radius    varchar2(4000);
+    l_pattern1  varchar2(4000);
+    l_pattern2  varchar2(4000);
+    l_pattern3  varchar2(4000);
+    l_pattern4  varchar2(4000);
+  begin
+    l_radius    := lower(to_single_byte(p_radius));
+    --~在第二位
+    l_pattern1  := '^(.{1}~){1}(.*)@.*$';
+    --~不在第二位
+    --l_pattern2  := '^(.{0}|.{2,}){1}~(.*)@.*$';
+    
+    l_pattern3  := '^([^@]{1})(~[^@]*)$';
+    
+    l_pattern4  := '^([^@~]*)@[^~]*$';
+    
+    if(regexp_like(l_radius, l_pattern1)) then
+      l_radius := regexp_replace(l_radius, l_pattern1, '\2');
+    elsif(regexp_like(l_radius, l_pattern3)) then
+      l_radius := regexp_replace(l_radius, l_pattern3, '\2');
+    elsif(regexp_like(l_radius, l_pattern4)) then
+      l_radius := regexp_replace(l_radius, l_pattern4, '\1');
+    end if;
+    
+    return l_radius;
+  exception
+    when others then
+      return g_const_null;
+  end getradius;
+  
+  function getusername
+  (
+    p_username varchar2
+  ) return varchar2
+  as
+    l_username varchar2(4000);
+  begin
+    l_username := to_single_byte(p_username);
+    l_username := replace(l_username, '(读)');
+    
+    return l_username;
+  exception
+    when others then
+      return g_const_null;
+  end;
+end dbn_uniform;
+/
+]]>
+         </code>
+      </snippet>
+      <snippet name="dbn_utl" description="dbn_utl">
+         <code>
+            <![CDATA[create or replace package dbn_utl
+/* Author:    Marcus Mao
+ * Date:      2012-01-17
+ * Desc:      dbn工具包，包含常用函数及过程。
+ * Modified:
+ *            Marcus 2012-03-06 添加函数num2ip64
+ *            Marcus 2012-04-18 添加函数ip2num_host
+ *                              添加函数num2ip_host
+ */
+as
+  type varchar2_table is table of varchar2(4000);
+  type varchar2_array is array(11) of varchar2(1);
+  g_const_zero constant number := 0;
+  g_const_null constant number := null;
+
+  /* func:
+   *   检查对象是否存在
+   * param
+   *   p_name：对象名
+   *   p_type：对象类型
+   *   p_owner：对象拥有者
+   * return
+   *   0：不存在
+   *   1：存在
+   */
+  function exist
+  (
+    p_name  varchar2,
+    p_type  varchar2 default 'TABLE'
+  ) return number;
+  
+  /* func:
+   *   拆分所给字符串
+   * param
+   *   p_str：被拆分的字符
+   *   p_sep：分隔符
+   * return
+   *   包含一列的表，将如'a,b,c,d'字段串拆分成如下结果
+   *   a
+   *   b
+   *   c
+   *   d
+   */  
+  function split
+  (
+    p_str varchar2, 
+    p_sep varchar2 default ','
+  ) return varchar2_table pipelined;
+
+  /* func:
+   *   将绝对秒数转为日期字符串
+   * param
+   *   p_sec：绝对秒数
+   *   p_pattern：日期字符串格式
+   * return
+   *   日期字符串
+   */
+  function sec2date
+  (
+    p_sec     number,
+    p_pattern varchar2  default 'YYYYMMDD'
+  ) return varchar2;
+
+  /* func:
+   *   将日期字符串转为绝对秒数
+   * param
+   *   p_date：日期字符串
+   *   p_pattern：日期字符串格式
+   * return
+   *   绝对秒数
+   */  
+  function date2sec
+  (
+    p_date    varchar2,
+    p_pattern varchar2  default 'YYYYMMDD'
+  ) return number;
+
+  /* func:
+   *   检查p_sub在p_ori中出现几次
+   * param
+   *   p_ori：源字符串
+   *   p_sub：子字符串
+   * return
+   *   出现次数
+   */  
+  function substr_cnt
+  (
+    p_ori varchar2,
+    p_sub varchar2
+  ) return number;  
+  
+  /* func:
+   *   ip转换为数字
+   * param
+   *   p_ipaddress：ip地址
+   * return
+   *   数字
+   */  
+  function ip2num
+  (
+    p_ipaddress varchar2
+  ) return number;
+  
+  /* func:
+   *   数字转换为ip
+   * param
+   *   p_num：数字
+   * return
+   *   ip地址
+   */    
+  function num2ip
+  (
+    p_num number
+  ) return varchar2;
+  
+  /* func:
+   *   ip转换为数字
+   * param
+   *   p_ipaddress：ip地址
+   * return
+   *   数字
+   */  
+  function ip2num_host
+  (
+    p_ipaddress varchar2
+  ) return number;
+  
+  /* func:
+   *   数字转换为ip
+   * param
+   *   p_num：数字
+   * return
+   *   ip地址
+   */    
+  function num2ip_host
+  (
+    p_num number
+  ) return varchar2;
+  
+  /* func:
+   *   ip转换为数字
+   * param
+   *   p_ipaddress：ip地址（包含8段，即两个v4ip拼结的字符串）
+   * return
+   *   数字
+   */  
+  function ip2num64
+  (
+    p_ipaddress varchar2
+  ) return number;
+  
+  /* func:
+   *   数字转换为ip
+   * param
+   *   p_num：数字
+   * return
+   *   ip地址（包含8段，即两个v4ip拼结的字符串）
+   */    
+  function num2ip64
+  (
+    p_num number
+  ) return varchar2;
+  
+  /* func:
+   *   获取对象名称
+   * param
+   * return
+   *   当前调用此函数的对象的名称
+   */  
+  function whoami 
+  return varchar2;
+  
+  /* func:
+   *   十进制转为二进制
+   * param
+   *   p_dec：十进制数字
+   * return
+   *   二进制字符串
+   */  
+  function dec2bin
+  (
+    p_dec number  default 0
+  ) return varchar2;
+  
+  /* func:
+   *   二进制转为十进制
+   * param
+   *   p_bin：二进制字符串
+   * return
+   *   十进制数字
+   */
+  function bin2dec
+  (
+    p_bin varchar2  default 0
+  ) return number;
+  
+  /* func:
+   *   15位身份证号转成18位
+   * param
+   *   p_id15：15位身份证号
+   * return
+   *   18位身份证号
+   */
+  function id15to18
+  (
+    p_id15 varchar2
+  ) return varchar2;
+  
+  /* func:
+   *   18位身份证号转成15位
+   * param
+   *   p_id18：18位身份证号
+   * return
+   *   15位身份证号
+   */
+  function id18to15
+  (
+    p_id18 varchar2
+  ) return varchar2;
+  
+  /* func:
+   *   判断是不是手机号
+   * param
+   *   p_cellphoneno：手机号
+   * return
+   *   如果传入值为手机号，则返回手机号；否则返回0
+   */
+  function cellphoneno
+  (
+    p_cellphoneno varchar2
+  ) return varchar2;
+end dbn_utl;
+/
+
+create or replace package body dbn_utl
+as
+  function exist
+  (
+    p_name  varchar2, 
+    p_type  varchar2 default 'TABLE'
+  ) return number
+  as
+    l_cnt number;
+  begin
+    select count(1) into l_cnt 
+      from user_objects 
+     where object_name=upper(p_name)
+       and object_type=upper(p_type);
+    
+    return l_cnt;
+  exception
+    when others then
+      return g_const_zero;
+  end exist;
+
+  function split
+  (
+    p_str varchar2, 
+    p_sep varchar2 default ','
+  ) return varchar2_table pipelined
+  as
+    l_start_pos number  := 0;
+    l_end_pos   number  := 0;
+    l_str       varchar2(32767);
+    l_field     varchar2(4000);
+    l_len        number;
+  begin
+    l_str := p_str || p_sep;
+    l_len := length(l_str);
+
+    while(l_end_pos<l_len-1) loop
+      l_start_pos := l_end_pos+1;
+      l_end_pos   := instr(l_str, p_sep, l_start_pos);
+      l_field     := substr(l_str, l_start_pos, l_end_pos-l_start_pos);
+      
+      pipe row(l_field);
+    end loop;
+
+    return;
+  exception
+    when others then
+      dbms_output.put_line(substr(sqlerrm(sqlcode), 1, 200));
+  end split;
+
+  function sec2date
+  (
+    p_sec     number,
+    p_pattern varchar2  default 'YYYYMMDD'
+  ) return varchar2
+  as
+    l_epoch varchar2(24) := '19700101080000';
+    l_date  varchar2(24);
+    l_sec   number(38);
+  begin
+    --如果传入的p_sec为空，则使用默认值
+    if (p_sec is null) then
+      l_sec := 0;
+    else
+      l_sec := p_sec;
+    end if;
+    
+    --计算日期
+    l_date := to_char(to_date(l_epoch, 'YYYYMMDDHH24MISS') + l_sec/86400, p_pattern);
+    
+    return l_date;
+  exception
+    when others then
+      return l_epoch;
+  end sec2date;
+
+  function date2sec
+  (
+    p_date    varchar2,
+    p_pattern varchar2  default 'YYYYMMDD'
+  ) return number
+  as
+    l_epoch varchar2(24) := '19700101080000';
+    l_date  varchar2(24);
+    l_sec   number(38);  
+  begin
+    --如果传入的p_date为空，则使用默认值
+    if (p_date is null) then
+      l_date := l_epoch;
+    else
+      l_date := p_date;
+    end if;
+    
+    --计算绝对秒数
+    l_sec := (to_date(l_date, p_pattern) - to_date(l_epoch, 'YYYYMMDDHH24MISS')) * 86400;
+    
+    return l_sec;
+  exception
+    when others then
+      return g_const_zero;
+  end date2sec;
+  
+  function substr_cnt
+  (
+    p_ori varchar2,
+    p_sub varchar2
+  ) return number
+  as
+    l_len1  number;
+    l_len2  number;
+    l_ret   number;
+  begin
+    l_len1 := length(p_ori);
+    l_len2 := nvl(length(replace(p_ori, p_sub)), 0);
+    
+    l_ret  := l_len1-l_len2;
+    
+    return l_ret;
+  exception
+    when others then
+      return g_const_zero;
+  end substr_cnt;
+  
+  function ip2num
+  (
+    p_ipaddress varchar2
+  ) return number
+  as
+    l_ret number;
+  begin
+    --简单决断ip格式是否合法
+    if (regexp_like(p_ipaddress, '^([0-9]){1,3}(\.([0-9]){1,3}){3}$')) then
+      select sum(power(2, 8*(4-rownum))*column_value) into l_ret 
+        from table(dbn_utl.split(p_ipaddress, '.'));
+      
+      --2147483647=127.255.255.255; 4294967296=255.255.255.255+1
+      if (l_ret>2147483647) then
+        l_ret := l_ret-4294967296;
+      end if;
+    else
+      l_ret := g_const_zero;
+    end if;
+    
+    return l_ret;
+  exception
+    when others then
+      return g_const_zero;
+  end ip2num;
+  
+  function num2ip
+  (
+    p_num number
+  ) return varchar2
+  as
+    l_num   number;
+    l_field number;
+    l_ret   varchar2(32);
+    l_sep   varchar2(1);
+  begin
+    --4294967296=255.255.255.255+1
+    if (p_num<0) then
+      l_num := p_num+4294967296;
+    else
+      l_num := p_num;
+    end if;
+
+    for i in reverse 1..4 loop
+      l_field := trunc(l_num/power(2, 8*(i-1)));
+      l_ret := l_ret || l_sep || l_field;      
+      l_num := l_num-power(2,8*(i-1))*l_field;
+
+      l_sep := '.';
+    end loop;    
+    
+    return l_ret;
+  exception
+    when others then
+      return g_const_null;
+  end num2ip;  
+  
+  function ip2num_host
+  (
+    p_ipaddress varchar2
+  ) return number
+  as
+    l_ret number;
+  begin
+    --简单决断ip格式是否合法
+    if (regexp_like(p_ipaddress, '^([0-9]){1,3}(\.([0-9]){1,3}){3}$')) then
+      select sum(power(2, 8*(4-rownum))*column_value) into l_ret 
+        from table(dbn_utl.split(p_ipaddress, '.'));
+    else
+      l_ret := g_const_zero;
+    end if;
+    
+    return l_ret;
+  exception
+    when others then
+      return g_const_zero;
+  end ip2num_host;
+  
+  function num2ip_host
+  (
+    p_num number
+  ) return varchar2
+  as
+    l_num   number;
+    l_field number;
+    l_ret   varchar2(32);
+    l_sep   varchar2(1);
+  begin
+    --p_num为负数则直接返回null
+    if (p_num<0) then
+      return g_const_null;
+    end if;
+    
+    l_num := p_num;
+
+    for i in reverse 1..4 loop
+      l_field := trunc(l_num/power(2, 8*(i-1)));
+      l_ret := l_ret || l_sep || l_field;      
+      l_num := l_num-power(2,8*(i-1))*l_field;
+
+      l_sep := '.';
+    end loop;    
+    
+    return l_ret;
+  exception
+    when others then
+      return g_const_null;
+  end num2ip_host;
+      
+  function ip2num64
+  (
+    p_ipaddress varchar2
+  ) return number
+  as
+    l_ret number;
+  begin
+    if (regexp_like(p_ipaddress, '^([0-9]){1,3}(\.([0-9]){1,3}){7}$')) then
+      select sum(power(2, 8*(8-rownum))*column_value) into l_ret
+        from table(dbn_utl.split(p_ipaddress, '.'));
+      
+      --注：右补0到20位可能会存在多个ip段对应相同结果值，如：20.0.0.1.127.0.0.10和200.0.0.14.246.0.0.100；
+      --并且补齐过之后将被还原成原来的ip段的可能性比较小，即可以说不可逆。
+      l_ret := rpad(l_ret, 20, 0);
+    else
+      l_ret := g_const_zero;
+    end if;
+
+    return l_ret;
+  exception
+    when others then
+      return g_const_zero;  
+  end ip2num64;
+  
+  function num2ip64
+  (
+    p_num number
+  ) return varchar2
+  as
+    l_num   number;
+    l_field number;
+    l_ret   varchar2(128);
+    l_sep   varchar2(1);
+  begin
+    l_num := p_num;
+    for i in reverse 1..8 loop
+      l_field := trunc(l_num/power(2, 8*(i-1)));
+      l_ret := l_ret || l_sep || l_field;      
+      l_num := l_num-power(2,8*(i-1))*l_field;
+
+      l_sep := '.';
+    end loop;
+    
+    return l_ret;
+  exception
+    when others then
+      return g_const_null;
+  end num2ip64;  
+  
+  function whoami 
+  return varchar2
+  as
+    l_owner     varchar2(256);
+    l_name      varchar2(256);
+    l_lineno    integer;
+    l_caller_t  varchar2(256);
+  begin
+    owa_util.who_called_me
+    (
+      owner     => l_owner,
+      name      => l_name,
+      lineno    => l_lineno,
+      caller_t  => l_caller_t
+    );
+    
+    return l_name;
+  exception
+    when others then
+      return g_const_null;      
+  end whoami;
+  
+  function dec2bin
+  (
+    p_dec number  default 0
+  ) return varchar2
+  as
+    --被除数
+    l_numerator number;
+  
+    l_ret varchar2(1024);
+  begin
+    l_numerator := abs(trunc(p_dec));
+    loop
+      l_ret := mod(l_numerator, 2) || l_ret;
+      l_numerator := trunc(l_numerator/2);
+      exit when l_numerator=0;
+    end loop;
+    return l_ret;
+  exception
+    when others then
+      return g_const_zero;      
+  end dec2bin;  
+  
+  function bin2dec
+  (
+    p_bin varchar2  default 0
+  ) return number
+  as
+    l_bin varchar2(38);
+    l_len number;
+    l_ret number        := 0;
+  begin
+    l_bin := abs(trunc(p_bin));
+    l_len := length(l_bin);
+    
+    for i in 1..l_len loop
+      l_ret := l_ret+power(2, l_len-i)*substr(l_bin, i, 1);
+    end loop;
+    return l_ret;
+  exception
+    when others then
+      return g_const_zero;     
+  end bin2dec;
+  
+  function id15to18
+  (
+    p_id15 varchar2
+  ) return varchar2
+  as
+    l_sum       number := 0;
+    l_id18      varchar2(18);
+    l_mod_array varchar2_array := varchar2_array('1','0','X','9','8','7','6','5','4','3','2');
+  begin
+    l_id18 := to_single_byte(p_id15);
+    
+    --如果不是15位数字则返回空
+    if(not regexp_like(l_id18, '[0-9]{15}')) then
+      return g_const_null;
+    end if;
+    
+    --添加两位世纪
+    l_id18 := substr(l_id18, 1, 6) || '19' || substr(l_id18, 7);
+    
+    for cards in (select rownum rn, column_value card 
+                    from table(dbn_utl.split('7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2'))) loop
+    
+      l_sum := l_sum + substr(l_id18, cards.rn, 1)*cards.card;
+    end loop;
+    
+    --添加校验位
+    l_id18 := l_id18 || l_mod_array(mod(l_sum, 11)+1);
+    
+    return l_id18;
+  exception
+    when others then
+      return g_const_null;    
+  end id15to18;
+  
+  function id18to15
+  (
+    p_id18 varchar2
+  ) return varchar2
+  as
+    l_id15  varchar2(15);
+    l_id18  varchar2(18);
+  begin
+    l_id18 := to_single_byte(p_id18);
+    
+    --如果不是17位数字+1位数字或x则返回空
+    if(not regexp_like(l_id18, '[0-9]{17}[0-9|x|X]')) then
+      return p_id18;
+    end if;
+    
+    l_id15 := substr(l_id18, 1, 6) || substr(l_id18, 9, 9);
+    
+    return l_id15;
+  exception
+    when others then
+      return p_id18;
+  end id18to15;
+  
+  function cellphoneno
+  (
+    p_cellphoneno varchar2
+  ) return varchar2
+  as
+    l_cellphoneno varchar2(11);
+    l_pattern     varchar2(4000);
+    l_p13         varchar2(1000) := '130[0-9]{8},131[0-9]{8},132[0-9]{8},133[0-9]{8},134[0-8]{1}[0-9]{7},135[0-9]{8},136[0-9]{8},137[0-9]{8},138[0-9]{8},139[0-9]{8}';
+    l_p15         varchar2(1000) := '150[0-9]{8},151[0-9]{8},152[0-9]{8},153[0-9]{8},155[0-9]{8},156[0-9]{8},157[0-9]{8},158[0-9]{8},159[0-9]{8}';
+    l_p17         varchar2(1000) := '176[0-9]{8}';
+    l_p18         varchar2(1000) := '180[0-9]{8},181[0-9]{8},182[0-9]{8},183[0-9]{8},184[0-9]{8},185[0-9]{8},186[0-9]{8},187[0-9]{8},188[0-9]{8},189[0-9]{8}';
+  begin
+    --手机号段的匹配模式，如果新增号段则需要修改变量的值或是新增变量
+    l_pattern := l_p13 || ',' || l_p15 || ',' || l_p17 || ',' || l_p18;
+    
+    l_cellphoneno := to_single_byte(p_cellphoneno);
+    
+    --匹配号段
+    select l_cellphoneno into l_cellphoneno 
+      from (select '^' || column_value || '$' p 
+              from table(dbn_utl.split(l_pattern)))
+     where regexp_like(l_cellphoneno, p);
+    
+    return l_cellphoneno;
+  exception
+    when others then
+      return g_const_zero;
+  end cellphoneno;
+end dbn_utl;
+/
+]]>
+         </code>
+      </snippet>
+   </group>
+</snippets>
